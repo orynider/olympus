@@ -15,6 +15,11 @@ if (!defined('IN_PHPBB'))
 	exit;
 }
 
+/**
+ * Modifications:
+ *
+ */
+
 // Enforce ASCII only string handling
 setlocale(LC_CTYPE, 'C');
 
@@ -105,6 +110,10 @@ if (!extension_loaded('xml'))
 if (extension_loaded('mbstring'))
 {
 	mb_internal_encoding('UTF-8');
+	// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+	// ini_set is only used to try to make things better for mods using mbstring directly
+	// I know they're not supposed to, but you know they still could and the fix is costless
+	@ini_set("mbstring.internal_encoding", 'UTF-8');
 
 	/**
 	* UTF-8 aware alternative to strrpos
@@ -129,11 +138,15 @@ if (extension_loaded('mbstring'))
 
 			if (is_null($offset))
 			{
-				return mb_strrpos($str, $needle);
+				// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+				// Explicit encoding
+				return mb_strrpos($str, $needle, 0, 'UTF-8');
 			}
 			else
 			{
-				return mb_strrpos($str, $needle, $offset);
+				// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+				// Explicit encoding
+				return mb_strrpos($str, $needle, $offset, 'UTF-8');
 			}
 		}
 	}
@@ -153,8 +166,9 @@ if (extension_loaded('mbstring'))
 				{
 					return false;
 				}
-
-				return mb_strrpos($str, $needle);
+				// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+				// Explicit encoding
+				return mb_strrpos($str, $needle, 'UTF-8');
 			}
 			else
 			{
@@ -163,10 +177,12 @@ if (extension_loaded('mbstring'))
 					trigger_error('utf8_strrpos expects parameter 3 to be long', E_USER_ERROR);
 					return false;
 				}
-
-				$str = mb_substr($str, $offset);
-
-				if (false !== ($pos = mb_strrpos($str, $needle)))
+				// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+				// Explicit encoding
+				$str = mb_substr($str, $offset, mb_strlen($str, 'UTF-8'), 'UTF-8');
+				// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+				// Explicit encoding
+				if (false !== ($pos = mb_strrpos($str, $needle, 'UTF-8')))
 				{
 					return $pos + $offset;
 				}
@@ -184,11 +200,15 @@ if (extension_loaded('mbstring'))
 	{
 		if (is_null($offset))
 		{
-			return mb_strpos($str, $needle);
+			// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+			// Explicit encoding
+			return mb_strpos($str, $needle, 0, 'UTF-8');
 		}
 		else
 		{
-			return mb_strpos($str, $needle, $offset);
+			// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+			// Explicit encoding
+			return mb_strpos($str, $needle, $offset, 'UTF-8');
 		}
 	}
 
@@ -198,7 +218,9 @@ if (extension_loaded('mbstring'))
 	*/
 	function utf8_strtolower($str)
 	{
-		return mb_strtolower($str);
+		// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+		// Explicit encoding
+		return mb_strtolower($str, 'UTF-8');
 	}
 
 	/**
@@ -207,7 +229,9 @@ if (extension_loaded('mbstring'))
 	*/
 	function utf8_strtoupper($str)
 	{
-		return mb_strtoupper($str);
+		// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+		// Explicit encoding
+		return mb_strtoupper($str, 'UTF-8');
 	}
 
 	/**
@@ -218,11 +242,15 @@ if (extension_loaded('mbstring'))
 	{
 		if (is_null($length))
 		{
-			return mb_substr($str, $offset);
+			// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+			// Explicit encoding
+			return mb_substr($str, $offset, mb_strlen($str, 'UTF-8'), 'UTF-8');
 		}
 		else
 		{
-			return mb_substr($str, $offset, $length);
+			// Fix for http://www.phpbb.com/bugs/phpbb3/52315
+			// Explicit encoding
+			return mb_substr($str, $offset, $length, 'UTF-8');
 		}
 	}
 
@@ -907,7 +935,7 @@ function utf8_recode($string, $encoding)
 		return gb2312($string);
 	}
 
-	// Trigger an error?! Fow now just give bad data :-(
+	// Trigger an error?! Fow now just gives bad data :-(
 	trigger_error('Unknown encoding: ' . $encoding, E_USER_ERROR);
 	//return $string; // use utf_normalizer::cleanup() ?
 }
@@ -1657,10 +1685,19 @@ function utf8_case_fold_nfkc($text, $option = 'full')
 	{
 		global $phpbb_root_path, $phpEx;
 		include($phpbb_root_path . 'includes/utf/utf_normalizer.' . $phpEx);
+		$utf_normalizer = new utf_normalizer();
 	}
-
+	if (version_compare(PHP_VERSION, '5.4.0-dev', '>=') && !isset($utf_normalizer))
+	{
+		$utf_normalizer = new utf_normalizer();
+	}
+	elseif( !is_object($utf_normalizer))
+	{
+		$utf_normalizer = new utf_normalizer();
+	}
+	
 	// convert to NFKC
-	utf_normalizer::nfkc($text);
+	$utf_normalizer->nfkc($text);
 
 	// FC_NFKC_Closure, http://www.unicode.org/Public/5.0.0/ucd/DerivedNormalizationProps.txt
 	$text = strtr($text, $fc_nfkc_closure);
@@ -1775,10 +1812,20 @@ function utf8_normalize_nfc($strings)
 		global $phpbb_root_path, $phpEx;
 		include($phpbb_root_path . 'includes/utf/utf_normalizer.' . $phpEx);
 	}
-
+	
+	if(!isset($utf_normalizer))
+	{
+		$utf_normalizer = new utf_normalizer();
+	}	
+	
+	if(!is_object($utf_normalizer))
+	{
+		$utf_normalizer = new utf_normalizer();
+	}
+	
 	if (!is_array($strings))
 	{
-		utf_normalizer::nfc($strings);
+		$utf_normalizer->nfc($strings);
 	}
 	else if (is_array($strings))
 	{
@@ -1788,12 +1835,12 @@ function utf8_normalize_nfc($strings)
 			{
 				foreach ($string as $_key => $_string)
 				{
-					utf_normalizer::nfc($strings[$key][$_key]);
+					$utf_normalizer->nfc($strings[$key][$_key]);
 				}
 			}
 			else
 			{
-				utf_normalizer::nfc($strings[$key]);
+				$utf_normalizer->nfc($strings[$key]);
 			}
 		}
 	}

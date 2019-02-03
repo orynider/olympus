@@ -200,7 +200,7 @@ function adm_page_footer($copyright_html = true)
 		'TRANSLATION_INFO'	=> (!empty($user->lang['TRANSLATION_INFO'])) ? $user->lang['TRANSLATION_INFO'] : '',
 		'S_COPYRIGHT_HTML'	=> $copyright_html,
 		'CREDIT_LINE'		=> $user->lang('POWERED_BY', '<a href="https://www.phpbb.com/">phpBB</a>&reg; Forum Software &copy; phpBB Group'),
-		'VERSION'			=> $config['version'])
+		'VERSION'			=> isset($config['version']) ? $config['version'] : $config['style_version']) //This will allow installing phpBB 3.1+ styles
 	);
 
 	$template->display('body');
